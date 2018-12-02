@@ -3,10 +3,9 @@
 #include<locale.h>
 #include<string.h>
 #include"hash.h"
-#define MaxHash 10000
 
 long int fileLen(FILE*);
-unsigned int strPoly(char*, int);
+unsigned int strPoly(char*, unsigned int);
 void insertKey(char* str, char**, int*);
 
 int main(int argc, char *argv[]) {
@@ -24,11 +23,12 @@ int main(int argc, char *argv[]) {
 
     unsigned long long int CHUNK_SiZE = 1ULL << 33;
     unsigned int BUFFER_SIZE = 1UL << 22;
+    unsigned int MaxHash = 1UL << 22;
     char* chunk = (char*)malloc(CHUNK_SiZE);
     char* chunkHead = chunk;
     HashTable* table = (HashTable*)malloc(MaxHash * sizeof(HashTable));
     char** buffer = (char**) malloc(BUFFER_SIZE);
-    int keybuflast = 0;
+    unsigned int keybuflast = 0;
 
     int count = 0;
     unsigned int len = fileLen(inFile);
@@ -41,9 +41,24 @@ int main(int argc, char *argv[]) {
         while(strstr(chunk, "\n") != NULL) {
             char* newline = strstr(chunk, "\n");
             *newline = '\0';
-            if(chunk[0] != '\0') insertKey(chunk, buffer, &keybuflast);
+            if(chunk[0] != '\0') {
+                unsigned int key = strPoly(chunk, MaxHash);
+                
+                if(buffer[table[key].keyPos] != NULL && strcmp(buffer[table[key].keyPos], chunk) == 0) {
+                    table[key].count++;
+                    printf("String: %s, Count: %d\n", buffer[table[key].keyPos], table[key].count);
+                } else {
+                    unsigned int nextKey = key;
+                    insertKey(chunk, buffer, &keybuflast);
+                    while(table[nextKey].count != 0) nextKey++;
+                    table[nextKey].count++;
+                    table[nextKey].keyPos = keybuflast;
+                    if(nextKey != key) table[key].next = &table[nextKey];
+                    keybuflast++;
+                }
+            }
+            
             i += strlen(chunk) + 1;
-            printf("%d/%d\n", i, len);
             chunk = newline + 1;
         }
     }
@@ -54,15 +69,14 @@ long int fileLen(FILE* file) {
     return ftell(file);
 }
 
-unsigned int strPoly(char* str, int maxhash) {
-    int sum = 0;
+unsigned int strPoly(char* str, unsigned int maxhash) {
+    unsigned int sum = 0;
     for(int i = 0; i < strlen(str) - 1; i++)
-        sum += (int)str[i] * 33 + (int)str[i + 1];
+        sum += (unsigned int)str[i] * 33 + (unsigned int)str[i + 1];
 
-    return sum %= maxhash;
+    return sum % maxhash;
 }
 
 void insertKey(char* str, char** keybuf, int* last) {
     keybuf[*last] = strdup(str);
-    (*last)++;
 }
