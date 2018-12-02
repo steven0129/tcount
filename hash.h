@@ -4,6 +4,5 @@
 typedef struct hashtable {
     unsigned int keyPos;
     int count;
-    struct hashtable* next;
 } HashTable;
 #endif
