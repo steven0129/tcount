@@ -5,7 +5,7 @@
 #include"hash.h"
 
 long int fileLen(FILE*);
-unsigned int strPoly(char*, unsigned int);
+unsigned int strPoly(char*, int, unsigned int);
 void insertKey(char* str, char**, int*);
 
 int main(int argc, char *argv[]) {
@@ -14,8 +14,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    FILE* inFile = fopen("titles.rec", "r");
-    FILE* outFile = fopen("tmp.rec", "wt");
+    FILE* inFile = fopen(argv[argc - 1], "r");
     if(!inFile) {
         printf("No such file or could not open it.\n");
         exit(1);
@@ -24,12 +23,23 @@ int main(int argc, char *argv[]) {
     unsigned long long int CHUNK_SiZE = 1ULL << 33;
     unsigned int BUFFER_SIZE = 1UL << 30;
     unsigned int MaxHash = BUFFER_SIZE;
+    int HashShift = 5;
+    
+    for(int i=0; i<argc; i++) {
+        if(strcmp(argv[i], "-sh") == 0) {
+            if(argv[i] != NULL) HashShift = atoi(argv[i + 1]);
+            else {
+                printf("Please input the value of left shift for hash function.\n");
+                exit(1);
+            }
+        }
+    }
+    
     char* chunk = (char*)malloc(CHUNK_SiZE);
     char* chunkHead = chunk;
     HashTable* table = (HashTable*)malloc(MaxHash * sizeof(HashTable));
     char** buffer = (char**) malloc(BUFFER_SIZE);
     unsigned int keybuflast = 0;
-
     int count = 0;
     unsigned int len = fileLen(inFile);
 
@@ -42,17 +52,15 @@ int main(int argc, char *argv[]) {
             char* newline = strstr(chunk, "\n");
             *newline = '\0';
             if(chunk[0] != '\0') {
-                unsigned int key = strPoly(chunk, MaxHash);
+                unsigned int key = strPoly(chunk, HashShift, MaxHash);
                 
                 while(table[key].count != 0 && strcmp(buffer[table[key].keyPos], chunk) != 0) {
                     key++;
                     if(key == MaxHash) key = 1;
                 }
 
-                if(table[key].count != 0) {
-                    printf("String: %s, Key: %u, Count: %d, Last: %u\n", buffer[table[key].keyPos], key, table[key].count, keybuflast);
-                    table[key].count++;
-                } else {
+                if(table[key].count != 0) table[key].count++;
+                else {
                     insertKey(chunk, buffer, &keybuflast);
                     table[key].keyPos = keybuflast;
                     table[key].count++;
@@ -63,6 +71,10 @@ int main(int argc, char *argv[]) {
             i += strlen(chunk) + 1;
             chunk = newline + 1;
         }
+
+        for(int i=0; i<keybuflast; i++) {
+            printf("%d  %s\n", table[strPoly(buffer[i], HashShift, MaxHash)].count, buffer[i]);
+        }
     }
 }
 
@@ -71,10 +83,10 @@ long int fileLen(FILE* file) {
     return ftell(file);
 }
 
-unsigned int strPoly(char* str, unsigned int maxhash) {
+unsigned int strPoly(char* str, int shift, unsigned int maxhash) {
     unsigned int sum = 0;
     for(int i = 0; i < strlen(str) - 1; i++)
-        sum += (unsigned int)str[i] << 5 + (unsigned int)str[i + 1];
+        sum += (unsigned int)str[i] << shift + (unsigned int)str[i + 1];
 
     return sum & (maxhash - 1);
 }
