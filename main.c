@@ -23,11 +23,11 @@ int main(int argc, char *argv[]) {
     unsigned long long int CHUNK_SiZE = 1ULL << 33;
     unsigned int BUFFER_SIZE = 1UL << 30;
     unsigned int MaxHash = BUFFER_SIZE;
-    int HashShift = 5;
+    int HashVal = 33;
     
     for(int i=0; i<argc; i++) {
-        if(strcmp(argv[i], "-sh") == 0) {
-            if(argv[i] != NULL) HashShift = atoi(argv[i + 1]);
+        if(strcmp(argv[i], "-hv") == 0) {
+            if(argv[i] != NULL) HashVal = atoi(argv[i + 1]);
             else {
                 printf("Please input the value of left shift for hash function.\n");
                 exit(1);
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
             char* newline = strstr(chunk, "\n");
             *newline = '\0';
             if(chunk[0] != '\0') {
-                unsigned int key = strPoly(chunk, HashShift, MaxHash);
+                unsigned int key = strPoly(chunk, HashVal, MaxHash);
                 
                 while(table[key].count != 0 && strcmp(buffer[table[key].keyPos], chunk) != 0) {
                     key++;
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
         }
 
         for(int i=0; i<keybuflast; i++) {
-            printf("%d  %s\n", table[strPoly(buffer[i], HashShift, MaxHash)].count, buffer[i]);
+            printf("%d\t%s\n", table[strPoly(buffer[i], HashVal, MaxHash)].count, buffer[i]);
         }
     }
 }
@@ -83,11 +83,10 @@ long int fileLen(FILE* file) {
     return ftell(file);
 }
 
-unsigned int strPoly(char* str, int shift, unsigned int maxhash) {
+unsigned int strPoly(char* str, int hashval, unsigned int maxhash) {
     unsigned int sum = 0;
     for(int i = 0; i < strlen(str) - 1; i++)
-        sum += (unsigned int)str[i] << shift + (unsigned int)str[i + 1];
-
+        sum += sum * hashval + (unsigned int)str[i];
     return sum & (maxhash - 1);
 }
 
